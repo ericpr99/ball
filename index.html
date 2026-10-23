@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>無人機足球記分板</title>
+  <title>無人機足球記分板（雙擊空白處切換全螢幕）</title>
   <style>
     :root{
       --bg:#0b0b0b;
@@ -160,7 +160,7 @@
       flex-wrap:wrap;
     }
     .controls button{
-      flex:0 1 auto;         /* 可縮放但不強制換行 */
+      flex:0 1 auto;
       white-space:nowrap;
       display:inline-flex;
       align-items:center;
@@ -190,6 +190,11 @@
       box-shadow: 0 8px 20px rgba(47,156,255,0.12);
     }
 
+    /* Fullscreen visual tweak when active (optional) */
+    :fullscreen body, :fullscreen .container, :fullscreen header {
+      background: #000;
+    }
+
     /* Small screen adjustments */
     @media (max-width:1000px){
       #timer{ font-size:40px; }
@@ -216,7 +221,7 @@
 <body>
   <header>無人機足球記分板</header>
 
-  <div class="container" role="main">
+  <div class="container" id="appContainer" role="main">
     <div class="top-bar-wrap">
       <div class="top-bar" role="region" aria-label="計時與勝局">
         <div class="timer-block" aria-hidden="false">
@@ -434,6 +439,23 @@
       }
     }
 
+    // Fullscreen toggle on double-click empty space
+    function isInteractiveElement(el){
+      if(!el) return false;
+      // treat buttons, inputs, controls, team panels as interactive
+      return el.closest('button, a, input, textarea, select, .controls, .team, .icon') !== null;
+    }
+
+    function toggleFullscreen(){
+      if(document.fullscreenElement){
+        document.exitFullscreen().catch(()=>{});
+      } else {
+        // request fullscreen on the documentElement for full-page effect
+        document.documentElement.requestFullscreen().catch(()=>{});
+      }
+    }
+
+    // Bindings
     document.addEventListener('DOMContentLoaded', function(){
       $('#redPanel').addEventListener('click', ()=> addScore('red'));
       $('#bluePanel').addEventListener('click', ()=> addScore('blue'));
@@ -459,6 +481,29 @@
         if(key === 'b') addScore('blue');
         if(key === 'p') startMatch();
         if(key === 's') { if(timerInterval){ clearInterval(timerInterval); timerInterval = null; } endMatch(); }
+      });
+
+      // Double-click handler on document to toggle fullscreen when clicking empty space
+      document.addEventListener('dblclick', function(e){
+        // If the double-click target is an interactive element (button, team, controls, input), ignore
+        if(isInteractiveElement(e.target)) return;
+        // Otherwise toggle fullscreen
+        toggleFullscreen();
+      });
+
+      // Optional: show a small hint when entering/exiting fullscreen (brief)
+      document.addEventListener('fullscreenchange', function(){
+        if(document.fullscreenElement){
+          // entered fullscreen
+          // briefly show text in timer
+          const prev = $('#timer').textContent;
+          $('#timer').textContent = '全螢幕模式';
+          setTimeout(()=>{ $('#timer').textContent = prev; }, 1200);
+        } else {
+          const prev = $('#timer').textContent;
+          $('#timer').textContent = '退出全螢幕';
+          setTimeout(()=>{ $('#timer').textContent = prev; }, 900);
+        }
       });
 
       updateScoreDisplays();
