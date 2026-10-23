@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>無人機足球比賽</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#000;
+      --panel:#111;
+      --accent:#222;
+      --red:#b22222;
+      --blue:#1e90ff;
+      --muted:rgba(255,255,255,0.12);
+      --icon-size:28px;
+      --gap:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: "Noto Sans TC", Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:#fff;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+    }
+
+    header{
+      width:100%;
+      background:var(--panel);
+      padding:12px 16px;
+      font-size:26px;
+      font-weight:700;
+      text-align:center;
+      border-bottom:1px solid rgba(255,255,255,0.03);
+    }
+
+    /* container */
+    .container{
+      width:100%;
+      padding:18px 20px;
+      display:flex;
+      flex-direction:column;
+      gap:var(--gap);
+      align-items:stretch;
+      max-width:100%;
+    }
+
+    /* TOP BAR: timer + wins 作為一個置中區塊 */
+    .top-bar-wrap{
+      width:100%;
+      display:flex;
+      justify-content:center; /* 整個區塊置中 */
+    }
+    .top-bar{
+      display:flex;
+      align-items:center;
+      gap:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      padding:12px 20px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      min-width:320px;
+      max-width:920px;
+      width:100%;
+      justify-content:center; /* 內部內容置中 */
+    }
+
+    /* timer block */
+    .timer-block{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      min-width:160px;
+    }
+    #timer{
+      font-size:56px;
+      text-align:center;
+      padding:6px 12px;
+      border-radius:8px;
+      background:rgba(255,255,255,0.02);
+      border:1px solid var(--muted);
+      min-width:120px;
+    }
+
+    /* wins block (顯示勝局) */
+    .wins{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:6px;
+      line-height:1.2;
+      color:#fff;
+    }
+    .wins h3{
+      margin:0;
+      font-weight:600;
+      font-size:16px;
+      opacity:0.95;
+    }
+    .wins .value{
+      font-weight:800;
+      font-size:20px;
+      margin-left:6px;
+      color:#fff;
+    }
+
+    /* scoreboard: 兩面板並排且不折行 */
+    .scoreboard{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      flex-wrap:nowrap; /* 強制不折行 */
+    }
+    .team{
+      flex:1 1 0;
+      border-radius:10px;
+      padding:18px;
+      cursor:pointer;
+      user-select:none;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      transition:transform .12s ease, box-shadow .12s ease;
+      min-height:220px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      overflow:hidden;
+    }
+    .team:active{ transform:scale(.995) }
+    .team:hover{ box-shadow:0 8px 28px rgba(0,0,0,0.6) }
+    .team h2{ margin:0; font-size:20px; font-weight:700; color:#fff; }
+    .circle{
+      width:150px;
+      height:150px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:64px;
+      margin:18px 0;
+      background:rgba(0,0,0,0.18);
+      border:2px solid rgba(255,255,255,0.06);
+    }
+    .red{ background: linear-gradient(180deg, rgba(178,34,34,0.95), rgba(178,34,34,0.9)); }
+    .blue{ background: linear-gradient(180deg, rgba(30,144,255,0.95), rgba(30,144,255,0.9)); }
+
+    /* controls */
+    .controls{
+      background:var(--accent);
+      padding:12px 10px;
+      display:flex;
+      justify-content:center;
+      gap:18px;
+      align-items:center;
+      border-top:1px solid rgba(255,255,255,0.04);
+      width:100%;
+      border-radius:10px;
+    }
+    .controls button{
+      background:none;
+      border:none;
+      padding:8px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:56px;
+      height:56px;
+      border-radius:10px;
+      transition:background .12s ease, transform .08s ease;
+    }
+    .controls button:hover{ background:rgba(255,255,255,0.04); transform:translateY(-2px) }
+    .controls .icon { width:var(--icon-size); height:var(--icon-size); fill:#fff; }
+
+    .penalty-red{
+      background: linear-gradient(180deg, rgba(178,34,34,0.95), rgba(178,34,34,0.85));
+      box-shadow: 0 6px 18px rgba(178,34,34,0.18);
+    }
+    .penalty-blue{
+      background: linear-gradient(180deg, rgba(30,144,255,0.95), rgba(30,144,255,0.85));
+      box-shadow: 0 6px 18px rgba(30,144,255,0.18);
+    }
+
+    /* RWD 調整：縮小內部字體與元件尺寸，但不折行 */
+    @media (max-width:1100px){
+      #timer{ font-size:48px; padding:8px 10px }
+      .circle{ width:130px; height:130px; font-size:56px }
+      .team{ min-height:200px; padding:14px }
+    }
+    @media (max-width:800px){
+      #timer{ font-size:40px; min-width:90px }
+      .circle{ width:110px; height:110px; font-size:44px }
+      .team{ min-height:180px; padding:12px }
+      .controls button{ width:48px; height:48px }
+      .top-bar{ gap:12px; padding:10px }
+    }
+    @media (max-width:520px){
+      #timer{ font-size:32px; padding:6px 8px }
+      .circle{ width:90px; height:90px; font-size:34px }
+      .team h2{ font-size:16px }
+      .wins h3{ font-size:14px }
+    }
+  </style>
+</head>
+<body>
+  <header>無人機足球比賽</header>
+
+  <div class="container">
+    <!-- top-bar-wrap 將整個 top-bar 置中於頁面 -->
+    <div class="top-bar-wrap">
+      <div class="top-bar" role="region" aria-label="計時與勝局">
+        <!-- timer 與 wins 作為一個置中群組 -->
+        <div class="timer-block" aria-hidden="false">
+          <div id="timer">14:38</div>
+        </div>
+
+        <div class="wins" aria-live="polite">
+          <h3>紅隊勝局: <span id="redWins" class="value">0</span></h3>
+          <h3>藍隊勝局: <span id="blueWins" class="value">0</span></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard" role="region" aria-label="記分板">
+      <div class="team red" id="redPanel" role="button" tabindex="0" aria-label="紅隊 加分">
+        <h2>紅隊</h2>
+        <div class="circle" id="redScore">0</div>
+      </div>
+
+      <div class="team blue" id="bluePanel" role="button" tabindex="0" aria-label="藍隊 加分">
+        <h2>藍隊</h2>
+        <div class="circle" id="blueScore">0</div>
+      </div>
+    </div>
+
+    <div class="controls" aria-hidden="false">
+      <button id="btnStart" title="開始比賽" aria-label="開始比賽">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+
+      <button id="btnStop" title="結束當前場次" aria-label="結束場次">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+      </button>
+
+      <button id="btnResetTotals" title="勝局歸零" aria-label="勝局歸零">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.8 0 5 2.2 5 5 0 .6-.1 1.2-.3 1.8l1.6 1.1C18.9 15 19 14.5 19 14c0-3.9-3.1-7-7-7zM6.3 6.2L4.7 5.1C5.1 4.1 6 3.3 7.1 3c.6-.1 1.2 0 1.7.2L8.2 4.9C7.6 4.8 7 4.9 6.6 5.3 6.2 5.7 6.1 6.1 6.3 6.2zM6 12c0-.6.1-1.2.3-1.8L4.7 9.1C4.1 10 4 11 4 12c0 3.9 3.1 7 7 7v3l4-4-4-4v3c-2.8 0-5-2.2-5-5z"/></svg>
+      </button>
+
+      <button id="btnPenaltyRed" class="penalty-red" title="紅隊罰球" aria-label="紅隊罰球">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3H4c-1.1 0-2 .9-2 2v2c0 .6.4 1 1 1h1v6c0 1.7 1.3 3 3 3h8c1.7 0 3-1.3 3-3V6h1c.6 0 1-.4 1-1V4c0-1.1-.9-2-2-2zM6 8H5V6h1v2zm12 7c0 .6-.4 1-1 1H8c-.6 0-1-.4-1-1V9h11v6z"/></svg>
+      </button>
+
+      <button id="btnPenaltyBlue" class="penalty-blue" title="藍隊罰球" aria-label="藍隊罰球">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3H4c-1.1 0-2 .9-2 2v2c0 .6.4 1 1 1h1v6c0 1.7 1.3 3 3 3h8c1.7 0 3-1.3 3-3V6h1c.6 0 1-.4 1-1V4c0-1.1-.9-2-2-2zM6 8H5V6h1v2zm12 7c0 .6-.4 1-1 1H8c-.6 0-1-.4-1-1V9h11v6z"/></svg>
+      </button>
+
+      <button id="btnResetRed" title="紅隊歸零" aria-label="紅隊歸零">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+
+      <button id="btnResetBlue" title="藍隊歸零" aria-label="藍隊歸零">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+
+      <button id="btnSettings" title="設定" aria-label="設定">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96a7.03 7.03 0 00-1.62-.94l-.36-2.54A.5.5 0 0013.5 2h-3a.5.5 0 00-.49.42l-.36 2.54c-.57.23-1.1.54-1.62.94l-2.39-.96a.5.5 0 00-.6.22L2.71 8.48a.5.5 0 00.12.64L4.86 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.71 14.16a.5.5 0 00-.12.64l1.92 3.32c.14.24.44.34.69.22l2.39-.96c.52.4 1.05.71 1.62.94l.36 2.54c.05.27.28.46.55.46h3c.27 0 .5-.19.55-.46l.36-2.54c.57-.23 1.1-.54 1.62-.94l2.39.96c.25.12.55.02.69-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    // state
+    let redScore = 0, blueScore = 0;
+    let redPenalty = 0, bluePenalty = 0;
+    let redWins = 0, blueWins = 0;
+    let timerInterval = null;
+    let currentTimerSeconds = 0;
+
+    function updateScoreDisplays(){
+      $('#redScore').text(redScore);
+      $('#blueScore').text(blueScore);
+    }
+    function updateWinsDisplays(){
+      $('#redWins').text(redWins);
+      $('#blueWins').text(blueWins);
+    }
+
+    function addScore(team){
+      if(team === 'red'){ redScore++; }
+      else { blueScore++; }
+      updateScoreDisplays();
+    }
+
+    function startMatch(){
+      const warmup = 3;
+      const matchSeconds = 180;
+      clearInterval(timerInterval);
+      countdown(warmup, function(){
+        runTimer(matchSeconds, function(){
+          endMatch();
+        });
+      });
+    }
+
+    function endMatch(){
+      const redTotal = redScore + redPenalty;
+      const blueTotal = blueScore + bluePenalty;
+      if(redTotal > blueTotal){
+        redWins++;
+        $('#timer').text('紅隊贏得此局！');
+      } else if(blueTotal > redTotal){
+        blueWins++;
+        $('#timer').text('藍隊贏得此局！');
+      } else {
+        $('#timer').text('此局平手！');
+      }
+      updateWinsDisplays();
+      redScore = 0; blueScore = 0;
+      redPenalty = 0; bluePenalty = 0;
+      updateScoreDisplays();
+    }
+
+    function penalty(team){
+      const seconds = 60;
+      countdown(seconds, function(){
+        if(team === 'red'){ redPenalty++; $('#timer').text('紅隊罰球結束，加分！'); }
+        else { bluePenalty++; $('#timer').text('藍隊罰球結束，加分！'); }
+      });
+    }
+
+    function countdown(seconds, callback){
+      clearInterval(timerInterval);
+      currentTimerSeconds = seconds;
+      timerInterval = setInterval(function(){
+        if(currentTimerSeconds >= 0){
+          $('#timer').text(formatTime(currentTimerSeconds));
+        }
+        if(currentTimerSeconds <= 10 && currentTimerSeconds > 0){
+          $('#beep')[0].play().catch(()=>{});
+        }
+        if(currentTimerSeconds <= 0){
+          clearInterval(timerInterval);
+          timerInterval = null;
+          if(typeof callback === 'function') callback();
+        }
+        currentTimerSeconds--;
+      }, 1000);
+    }
+
+    function runTimer(seconds, callback){
+      clearInterval(timerInterval);
+      currentTimerSeconds = seconds;
+      timerInterval = setInterval(function(){
+        if(currentTimerSeconds >= 0){
+          $('#timer').text(formatTime(currentTimerSeconds));
+        }
+        if(currentTimerSeconds <= 10 && currentTimerSeconds > 0){
+          $('#beep')[0].play().catch(()=>{});
+        }
+        if(currentTimerSeconds <= 0){
+          clearInterval(timerInterval);
+          timerInterval = null;
+          if(typeof callback === 'function') callback();
+        }
+        currentTimerSeconds--;
+      }, 1000);
+    }
+
+    function formatTime(sec){
+      if(sec < 0) sec = 0;
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      if(sec >= 60) return `${m}:${s < 10 ? '0' : ''}${s}`;
+      return `${sec} 秒`;
+    }
+
+    function resetMatch(){
+      clearInterval(timerInterval);
+      timerInterval = null;
+      redScore = 0; blueScore = 0;
+      redPenalty = 0; bluePenalty = 0;
+      $('#redScore').text(0);
+      $('#blueScore').text(0);
+      $('#timer').text('準備開始');
+    }
+
+    function resetTotals(){
+      clearInterval(timerInterval);
+      timerInterval = null;
+      redScore = 0; blueScore = 0;
+      redPenalty = 0; bluePenalty = 0;
+      redWins = 0; blueWins = 0;
+      $('#redScore').text(0);
+      $('#blueScore').text(0);
+      updateWinsDisplays();
+      $('#timer').text('勝局已歸零');
+    }
+
+    function resetTeam(team){
+      if(team === 'red'){
+        redScore = 0; redPenalty = 0;
+        $('#redScore').text(0);
+      } else {
+        blueScore = 0; bluePenalty = 0;
+        $('#blueScore').text(0);
+      }
+    }
+
+    $(function(){
+      $('#redPanel').on('click keypress', function(e){
+        if(e.type === 'keypress' && e.key !== 'Enter' && e.key !== ' ') return;
+        addScore('red');
+      });
+      $('#bluePanel').on('click keypress', function(e){
+        if(e.type === 'keypress' && e.key !== 'Enter' && e.key !== ' ') return;
+        addScore('blue');
+      });
+
+      $('#btnStart').on('click', startMatch);
+      $('#btnStop').on('click', function(){
+        if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+        endMatch();
+      });
+      $('#btnResetTotals').on('click', resetTotals);
+
+      $('#btnPenaltyRed').on('click', function(){ penalty('red'); });
+      $('#btnPenaltyBlue').on('click', function(){ penalty('blue'); });
+
+      $('#btnResetRed').on('click', function(){ resetTeam('red'); });
+      $('#btnResetBlue').on('click', function(){ resetTeam('blue'); });
+
+      $('#btnSettings').on('click', function(){ alert('設定功能尚未實作'); });
+
+      $(document).on('keydown', function(e){
+        const key = e.key.toLowerCase();
+        if(key === 'r') addScore('red');
+        if(key === 'b') addScore('blue');
+        if(key === 'p') startMatch();
+        if(key === 's') { if(timerInterval){ clearInterval(timerInterval); timerInterval = null; } endMatch(); }
+      });
+
+      updateScoreDisplays();
+      updateWinsDisplays();
+    });
+  </script>
+</body>
+</html>
